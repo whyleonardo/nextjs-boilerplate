@@ -54,6 +54,9 @@ src/
       rpc/[[...rest]]/          # oRPC API
   features/                     # Feature-based modules
     auth/components/            # Client components (forms, etc.)
+    <name>/
+      contracts.ts              # API contract (schemas + HTTP metadata)
+      procedures/               # oRPC procedure implementations
   components/                   # Shared components
     ui/                         # shadcn/ui primitives
     auth/                       # Auth components (user-button)
@@ -66,8 +69,8 @@ src/
   server/                       # Server-only code
     auth/                       # better-auth config
     db/                         # Drizzle client + schema
-    rpc/                        # oRPC router + procedures
-  store/                       # Zustand stores
+    rpc/                        # oRPC router (wires feature slices together)
+  store/                        # Zustand stores
 ```
 
 ## Environment Variables
@@ -122,29 +125,139 @@ Schema files live in `src/server/db/schema/`. The `auth.ts` schema is auto-gener
 
 ## API (oRPC)
 
-Add procedures in `src/server/rpc/procedures/` and wire them into `src/server/rpc/index.ts`.
+The API layer uses a **contract-first** pattern. Each feature owns its contract (schema + HTTP metadata) and its procedure implementations. The central router in `src/server/rpc/index.ts` only wires features together.
 
-**Example procedure:**
-```ts
-// src/server/rpc/procedures/hello.ts
-import { publicProcedure } from "../middleware";
-import { z } from "zod";
+### File layout (follow the `todo` feature as the reference)
 
-export const hello = publicProcedure
-  .input(z.object({ name: z.string() }))
-  .handler(({ input }) => {
-    return { message: `Hello, ${input.name}` };
-  });
+```
+src/features/<name>/
+  contracts.ts          # API shape: schemas + HTTP route metadata (no logic)
+  procedures/
+    <procedure>.ts      # One file per procedure
+    index.ts            # Assembles and exports the router slice
 ```
 
-**Use in client:**
+### 1. Define the contract
+
+```ts
+// src/features/todo/contracts.ts
+import { oc } from "@orpc/contract";
+import { z } from "zod";
+
+export const TodoSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+});
+
+export type Todo = z.infer<typeof TodoSchema>;
+
+export const todoContract = {
+  list: oc
+    .route({ method: "GET", path: "/todos", summary: "List all todos" })
+    .output(z.array(TodoSchema)),
+
+  create: oc
+    .route({ method: "POST", path: "/todos", summary: "Create a todo" })
+    .input(z.object({ title: z.string().min(1).max(255) }))
+    .output(TodoSchema),
+};
+```
+
+### 2. Implement each procedure in its own file
+
+```ts
+// src/features/todo/procedures/list.ts
+import { implement } from "@orpc/server";
+import { todoContract } from "@/features/todo/contracts";
+import { authMiddleware } from "@/server/rpc/middleware";
+
+const os = implement(todoContract);
+
+export const listTodos = os.list.use(authMiddleware).handler(() => {
+  return []; // replace with a real query
+});
+```
+
+```ts
+// src/features/todo/procedures/create.ts
+import { implement } from "@orpc/server";
+import { type Todo, todoContract } from "@/features/todo/contracts";
+import { authMiddleware } from "@/server/rpc/middleware";
+
+const os = implement(todoContract);
+
+export const createTodo = os.create.use(authMiddleware).handler(({ input }) => {
+  const todo: Todo = { id: crypto.randomUUID(), title: input.title };
+  return todo;
+});
+```
+
+### 3. Assemble the feature slice
+
+```ts
+// src/features/todo/procedures/index.ts
+import { listTodos } from "./list";
+import { createTodo } from "./create";
+
+export const todo = {
+  list: listTodos,
+  create: createTodo,
+};
+```
+
+### 4. Register the slice in the router
+
+```ts
+// src/server/rpc/index.ts
+import { todo } from "@/features/todo/procedures";
+
+export const router = {
+  todo,
+};
+
+export type AppRouter = typeof router;
+```
+
+### Middleware
+
+Two procedure bases are available from `src/server/rpc/middleware.ts`:
+
+| Export | When to use |
+|---|---|
+| `publicProcedure` | No auth required |
+| `authMiddleware` | Use with `implement()` — gates the handler behind a valid session |
+| `protectedProcedure` | Builder-style alternative to `authMiddleware` |
+
+### Calling procedures from the client
+
 ```tsx
 "use client";
-import { orpc } from "@/lib/orpc/utils";
+import { orpc } from "@/lib/orpc/client";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
-export function Example() {
-  const { data } = orpc.hello.useQuery({ name: "World" });
-  return <div>{data?.message}</div>;
+export function Todos() {
+  const { data } = useQuery(orpc.todo.list.queryOptions());
+
+  const create = useMutation(orpc.todo.create.mutationOptions());
+
+  return (
+    <div>
+      {data?.map(t => <p key={t.id}>{t.title}</p>)}
+      <button onClick={() => create.mutate({ title: "New todo" })}>Add</button>
+    </div>
+  );
+}
+```
+
+### Calling procedures from Server Components
+
+```tsx
+// No HTTP round-trip — calls the router directly on the server
+import "@/lib/orpc/server";
+
+export default async function TodosPage() {
+  const todos = await globalThis.$client.todo.list();
+  return <ul>{todos.map(t => <li key={t.id}>{t.title}</li>)}</ul>;
 }
 ```
 
@@ -166,7 +279,7 @@ The API automatically generates OpenAPI 3.x specification from your oRPC router.
 - **API clients**: Generate SDKs using [openapi-generator](https://github.com/OpenAPITools/openapi-generator)
 - **Custom tools**: Consume the OpenAPI JSON directly
 
-The spec is auto-generated from your Zod schemas and procedure definitions in `src/server/rpc/`.
+The spec is auto-generated from your Zod schemas and contract definitions in `src/features/`.
 
 ## Scripts
 
