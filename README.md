@@ -153,11 +153,13 @@ export function Example() {
 The API automatically generates OpenAPI 3.x specification from your oRPC router.
 
 **Interactive API documentation (Scalar UI):**
-- Development: `http://localhost:3000/api-reference`
-- Production: `https://your-domain.com/api-reference`
+- Development: `http://localhost:3000/api/openapi?format=ui`
+- Production: `https://your-domain.com/api/openapi?format=ui`
+- Or visit `/api/openapi` in a browser (auto-detects HTML preference)
 
-**Raw OpenAPI spec:**
-- `/api/openapi` — JSON specification
+**Raw OpenAPI spec (JSON):**
+- `/api/openapi` — JSON specification (default for API clients)
+- `/api/openapi?format=json` — Explicit JSON format
 
 **Use the spec with:**
 - **Postman**: Import `/api/openapi` URL
