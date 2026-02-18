@@ -29,3 +29,21 @@ export function createQueryClient() {
     },
   });
 }
+
+let browserQueryClient: QueryClient | undefined;
+
+/**
+ * Returns a singleton QueryClient for the browser.
+ * On the server a new instance is created per request (via createQueryClient).
+ */
+export function getQueryClient() {
+  if (typeof window === "undefined") {
+    // Server: always create a fresh client to avoid cross-request leaks.
+    return createQueryClient();
+  }
+  // Browser: reuse a single instance so every consumer shares the same cache.
+  if (!browserQueryClient) {
+    browserQueryClient = createQueryClient();
+  }
+  return browserQueryClient;
+}
