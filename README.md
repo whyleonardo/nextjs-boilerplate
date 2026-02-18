@@ -7,6 +7,7 @@ A minimal, production-ready Next.js starter with modern tooling and authenticati
 - **Next.js 16** (App Router, React 19, Turbopack)
 - **TypeScript** + **Tailwind CSS v4**
 - **bun** package manager
+- **@t3-oss/env-nextjs** type-safe environment variables
 - **Biome** + **ultracite** for linting/formatting
 - **shadcn/ui** component library
 - **better-auth** authentication (email/password, extendable)
@@ -68,6 +69,21 @@ src/
     rpc/                        # oRPC router + procedures
   stores/                       # Zustand stores
 ```
+
+## Environment Variables
+
+Environment variables are validated at build time using `@t3-oss/env-nextjs` and Zod schemas.
+
+All environment variable definitions live in `src/env.ts`:
+- **Server variables**: Only accessible server-side (e.g., `DATABASE_URL`, `BETTER_AUTH_SECRET`)
+- **Client variables**: Must be prefixed with `NEXT_PUBLIC_` (e.g., `NEXT_PUBLIC_APP_URL`)
+
+**Adding a new environment variable:**
+1. Add to `.env.example` and `.env.local`
+2. Add schema to `src/env.ts` (server or client section)
+3. Add to `runtimeEnv` object in `src/env.ts`
+
+Import and use: `import { env } from "@/env"`
 
 ## Authentication
 
