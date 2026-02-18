@@ -1,9 +1,10 @@
-// Import your procedure groups here, e.g.:
-// import { postProcedures } from "./procedures/posts";
+import { createTodo, listTodos } from "./procedures/todo";
 
 export const router = {
-  // Add your procedures here, e.g.:
-  // posts: postProcedures,
+  todo: {
+    list: listTodos,
+    create: createTodo,
+  },
 };
 
 export type AppRouter = typeof router;
