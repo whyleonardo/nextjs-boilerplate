@@ -1,10 +1,10 @@
 import {
   defaultShouldDehydrateQuery,
-  isServer,
   QueryClient,
 } from "@tanstack/react-query";
+import { serializer } from "@/lib/orpc/serializer";
 
-function makeQueryClient() {
+export function createQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
@@ -16,24 +16,16 @@ function makeQueryClient() {
         shouldDehydrateQuery: (query) =>
           defaultShouldDehydrateQuery(query) ||
           query.state.status === "pending",
+        serializeData(data) {
+          const [json, meta] = serializer.serialize(data);
+          return { json, meta };
+        },
+      },
+      hydrate: {
+        deserializeData(data) {
+          return serializer.deserialize(data.json, data.meta);
+        },
       },
     },
   });
-}
-
-let browserQueryClient: QueryClient | undefined;
-
-/**
- * Returns a QueryClient singleton.
- * On the server a fresh client is created per request.
- * On the client the same instance is reused across renders.
- */
-export function getQueryClient() {
-  if (isServer) {
-    return makeQueryClient();
-  }
-  if (!browserQueryClient) {
-    browserQueryClient = makeQueryClient();
-  }
-  return browserQueryClient;
 }

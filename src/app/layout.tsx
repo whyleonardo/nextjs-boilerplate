@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "@/lib/orpc/server";
 import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "./providers";
 
