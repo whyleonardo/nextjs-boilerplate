@@ -18,9 +18,11 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@orpc/client": "^1.13.5",
+    "@orpc/openapi": "^1.13.5",
     "@orpc/react": "^1.13.5",
     "@orpc/server": "^1.13.5",
     "@orpc/tanstack-query": "^1.13.5",
+    "@orpc/zod": "^1.13.5",
     "@t3-oss/env-nextjs": "^0.13.10",
     "@tanstack/db": "^0.5.26",
     "@tanstack/query-db-collection": "^1.0.23",
