@@ -152,16 +152,19 @@ export function Example() {
 
 The API automatically generates OpenAPI 3.x specification from your oRPC router.
 
-**Access the spec:**
-- Development: `http://localhost:3000/api/openapi`
-- Production: `https://your-domain.com/api/openapi`
+**Interactive API documentation (Scalar UI):**
+- Development: `http://localhost:3000/api-reference`
+- Production: `https://your-domain.com/api-reference`
 
-Use the OpenAPI spec with:
-- **Swagger UI**: Paste the URL into [Swagger Editor](https://editor.swagger.io/)
-- **Postman**: Import the spec URL
+**Raw OpenAPI spec:**
+- `/api/openapi` — JSON specification
+
+**Use the spec with:**
+- **Postman**: Import `/api/openapi` URL
 - **API clients**: Generate SDKs using [openapi-generator](https://github.com/OpenAPITools/openapi-generator)
+- **Custom tools**: Consume the OpenAPI JSON directly
 
-The spec is generated from your Zod schemas and procedure definitions in `src/server/rpc/`.
+The spec is auto-generated from your Zod schemas and procedure definitions in `src/server/rpc/`.
 
 ## Scripts
 
