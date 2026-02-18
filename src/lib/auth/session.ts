@@ -8,10 +8,10 @@ import { auth } from "@/server/auth";
  * Use this when you need the session data without enforcing authentication.
  */
 export async function getSession() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-  return session;
+    const session = await auth.api.getSession({
+        headers: await headers(),
+    });
+    return session;
 }
 
 /**
@@ -20,11 +20,11 @@ export async function getSession() {
  * Use this at the top of protected Server Components / page.tsx files.
  */
 export async function requireSession() {
-  const session = await getSession();
-  if (!session) {
-    redirect("/sign-in");
-  }
-  return session;
+    const session = await getSession();
+    if (!session) {
+        redirect("/sign-in");
+    }
+    return session;
 }
 
 /**
@@ -33,8 +33,8 @@ export async function requireSession() {
  * Use this at the top of auth pages (sign-in, sign-up).
  */
 export async function requireGuest() {
-  const session = await getSession();
-  if (session) {
-    redirect("/dashboard");
-  }
+    const session = await getSession();
+    if (session) {
+        redirect("/dashboard");
+    }
 }
