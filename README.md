@@ -42,35 +42,78 @@ bun run dev
 
 Visit [http://localhost:3000](http://localhost:3000)
 
+
 ## Project Structure
 
 ```
 src/
-  app/                          # Next.js App Router
-    (auth)/                     # Auth pages (sign-in, sign-up)
-    (dashboard)/dashboard/      # Protected route example
-    api/
-      auth/[...all]/            # better-auth API
-      rpc/[[...rest]]/          # oRPC API
-  features/                     # Feature-based modules
-    auth/components/            # Client components (forms, etc.)
-    <name>/
-      contracts.ts              # API contract (schemas + HTTP metadata)
-      procedures/               # oRPC procedure implementations
-  components/                   # Shared components
-    ui/                         # shadcn/ui primitives
-    auth/                       # Auth components (user-button)
-  lib/                          # Client utilities
+  instrumentation.ts                      # Initialises oRPC server client at startup
+  env.ts                                  # Type-safe env vars (@t3-oss/env-nextjs + Zod)
+  app/
+    layout.tsx                            # Root layout — imports Providers
+    page.tsx                              # Home page
+    providers.tsx                         # QueryClientProvider + ReactQueryDevtools
+    globals.css                           # Tailwind v4 + shadcn CSS variables
+    (api)/                                # Route group — no layout wrapping
+      api/
+        [[...rest]]/route.ts              # OpenAPI / Scalar UI handler
+        auth/[...all]/route.ts            # better-auth handler
+      rpc/[[...rest]]/route.ts            # oRPC RPC handler
+    (auth)/                               # Route group — guest-only
+      layout.tsx                          # requireGuest() guard
+      sign-in/page.tsx
+      sign-up/page.tsx
+    (dashboard)/
+      dashboard/page.tsx                  # Protected page — requireSession() guard
+  features/                               # Feature-based modules
     auth/
-      client.ts                 # better-auth React client
-      session.ts                # Server-side session helpers
-    orpc/                       # oRPC client + server caller
-    query/                      # TanStack Query hydration
-  server/                       # Server-only code
-    auth/                       # better-auth config
-    db/                         # Drizzle client + schema
-    rpc/                        # oRPC router (wires feature slices together)
-  store/                        # Zustand stores
+      components/
+        sign-in-form.tsx
+        sign-up-form.tsx
+    todo/                                 # Reference feature implementation
+      contracts.ts                        # API contract (schemas + HTTP metadata)
+      collections.ts                      # TanStack DB collection (query-db bridge)
+      procedures/
+        list.ts
+        index.ts                          # Assembles and exports the router slice
+  components/
+    auth/
+      user-button.tsx                     # Avatar dropdown with sign-out
+    ui/                                   # shadcn/ui primitives
+      avatar.tsx
+      button.tsx
+      card.tsx
+      dropdown-menu.tsx
+      form.tsx
+      input.tsx
+      label.tsx
+      separator.tsx
+      skeleton.tsx
+      sonner.tsx
+  lib/
+    auth/
+      client.ts                           # better-auth React client
+      session.ts                          # getSession / requireSession / requireGuest
+    orpc/
+      client.ts                           # oRPC client + TanStack Query utils (browser)
+      server.ts                           # oRPC direct router client (server-only)
+      serializer.ts                       # StandardRPCJsonSerializer for SSR hydration
+    query/
+      client.ts                           # createQueryClient / getQueryClient singleton
+      hydration.tsx                       # HydrateClient + per-request getQueryClient
+    utils.ts                              # cn() — clsx + tailwind-merge
+  server/
+    auth/index.ts                         # betterAuth config (Drizzle adapter, email/password)
+    db/
+      index.ts                            # Drizzle client (postgres-js)
+      schema/
+        auth.ts                           # user, session, account, verification tables
+        index.ts                          # Barrel re-export
+    rpc/
+      index.ts                            # Central router + AppRouter type
+      middleware.ts                       # publicProcedure / authMiddleware / protectedProcedure
+  store/
+    app-store.ts                          # Zustand store (persisted to localStorage)
 ```
 
 ## Environment Variables
@@ -260,6 +303,145 @@ export default async function TodosPage() {
   return <ul>{todos.map(t => <li key={t.id}>{t.title}</li>)}</ul>;
 }
 ```
+
+## TanStack DB Collections
+
+TanStack DB sits on top of TanStack Query and provides a reactive, client-side collection store. The bridge between them is `@tanstack/query-db-collection`, which maps a query key directly to a live collection — so any mutation that invalidates the query automatically syncs the collection.
+
+### How it works
+
+```
+oRPC procedure ──► queryKey / queryFn ──► TanStack Query cache ──► TanStack DB collection
+                                                   ▲
+                                          mutations invalidate here
+```
+
+### 1. Create a collection
+
+Put collections next to the feature they belong to:
+
+```ts
+// src/features/todo/collections.ts
+import { queryCollectionOptions } from "@tanstack/query-db-collection";
+import { createCollection } from "@tanstack/react-db";
+import { orpc } from "@/lib/orpc/client";
+import { getQueryClient } from "@/lib/query/client";
+
+export const todosCollection = createCollection(
+  queryCollectionOptions({
+    syncMode: "on-demand",               // Fetch only when something subscribes
+    queryKey: orpc.todo.list.queryKey(), // Shares the same cache entry as useQuery(orpc.todo.list.queryOptions())
+    queryFn: async () => await orpc.todo.list.call(),
+    queryClient: getQueryClient(),       // Browser singleton — same instance as QueryClientProvider
+    getKey: (item) => item.id,           // Primary key for TanStack DB's internal map
+  }),
+);
+```
+
+**Key points:**
+- `queryKey` must match the key used by `useQuery` so both share the same cache entry.
+- `getQueryClient()` from `src/lib/query/client.ts` returns the browser singleton — the same instance wrapped by `<QueryClientProvider>`.
+- `syncMode: "on-demand"` means data is only fetched when the collection is actually used (no background polling on mount).
+
+### 2. Query the collection in a component
+
+Use `useLiveQuery` from `@tanstack/react-db`. It accepts a query builder function (`q`) that describes what to fetch from the collection, and returns reactive `data`, `isLoading`, and `isError` flags.
+
+**Basic — all todos:**
+
+```tsx
+"use client";
+import { useLiveQuery } from "@tanstack/react-db";
+import { todosCollection } from "@/features/todo/collections";
+
+export function TodoList() {
+  const { data: todos, isLoading } = useLiveQuery((q) =>
+    q.from({ todos: todosCollection })
+  );
+
+  if (isLoading) return <p>Loading...</p>;
+
+  return (
+    <ul>
+      {todos.map((todo) => (
+        <li key={todo.id}>{todo.title}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+**With `where` filter and `select` projection:**
+
+```tsx
+"use client";
+import { useLiveQuery, eq } from "@tanstack/react-db";
+import { todosCollection } from "@/features/todo/collections";
+
+export function IncompleteTodos() {
+  const { data: todos, isLoading, isError } = useLiveQuery((q) =>
+    q
+      .from({ todos: todosCollection })
+      .where(({ todos }) => eq(todos.completed, false))
+      .select(({ todos }) => ({ id: todos.id, title: todos.title }))
+  );
+
+  if (isLoading) return <p>Loading...</p>;
+  if (isError) return <p>Something went wrong.</p>;
+
+  return (
+    <ul>
+      {todos.map((todo) => (
+        <li key={todo.id}>{todo.title}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+**With reactive deps — re-runs the query when a variable changes:**
+
+```tsx
+"use client";
+import { useLiveQuery, eq } from "@tanstack/react-db";
+import { useState } from "react";
+import { todosCollection } from "@/features/todo/collections";
+
+export function FilteredTodos() {
+  const [showCompleted, setShowCompleted] = useState(false);
+
+  const { data: todos } = useLiveQuery(
+    (q) =>
+      q
+        .from({ todos: todosCollection })
+        .where(({ todos }) => eq(todos.completed, showCompleted)),
+    [showCompleted] // Re-runs when showCompleted changes
+  );
+
+  return (
+    <>
+      <button onClick={() => setShowCompleted((v) => !v)}>
+        Show {showCompleted ? "incomplete" : "completed"}
+      </button>
+      <ul>
+        {todos?.map((todo) => (
+          <li key={todo.id}>{todo.title}</li>
+        ))}
+      </ul>
+    </>
+  );
+}
+```
+
+### Collection vs plain useQuery — when to use which
+
+| Scenario | Recommended |
+|---|---|
+| Simple list display, no client-side filtering | `useQuery(orpc.todo.list.queryOptions())` |
+| Client-side filter / projection without a round-trip | `useLiveQuery` with `.where()` / `.select()` |
+| Reactive query that depends on local state | `useLiveQuery` with deps array |
+| Optimistic UI with local writes | TanStack DB (built-in `optimisticUpdate` support) |
+| SSR prefetch + hydration | `useQuery` + `HydrateClient` (collections are client-only) |
 
 ## OpenAPI Documentation
 
