@@ -7,6 +7,7 @@
       "dependencies": {
         "@hookform/resolvers": "^5.2.2",
         "@orpc/client": "^1.13.5",
+        "@orpc/json-schema": "^1.13.5",
         "@orpc/openapi": "^1.13.5",
         "@orpc/react": "^1.13.5",
         "@orpc/server": "^1.13.5",

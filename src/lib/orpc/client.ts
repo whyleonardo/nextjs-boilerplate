@@ -1,22 +1,24 @@
 import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
 import type { RouterClient } from "@orpc/server";
+import { createTanstackQueryUtils } from "@orpc/tanstack-query";
 import type { AppRouter } from "@/server/rpc";
 
+declare global {
+  var $client: RouterClient<AppRouter> | undefined;
+}
+
 const link = new RPCLink({
-  url: () =>
-    `${
-      typeof window !== "undefined"
-        ? window.location.origin
-        : (process.env.BETTER_AUTH_URL ?? "http://localhost:3000")
-    }/api/rpc`,
-  headers: async () => {
-    if (typeof window !== "undefined") {
-      return {};
+  url: () => {
+    if (typeof window === "undefined") {
+      throw new Error("RPCLink is not allowed on the server side.");
     }
-    const { headers } = await import("next/headers");
-    return Object.fromEntries((await headers()).entries());
+
+    return `${window.location.origin}/rpc`;
   },
 });
 
-export const client: RouterClient<AppRouter> = createORPCClient(link);
+const client: RouterClient<AppRouter> =
+  globalThis.$client ?? createORPCClient(link);
+
+export const orpc = createTanstackQueryUtils(client);
