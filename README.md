@@ -153,8 +153,8 @@ export function Example() {
 The API automatically generates OpenAPI 3.x specification from your oRPC router.
 
 **Interactive API documentation (Scalar UI):**
-- Development: `http://localhost:3000/api/openapi?format=ui`
-- Production: `https://your-domain.com/api/openapi?format=ui`
+- Development: `http://localhost:3000/api`
+- Production: `https://your-domain.com/api`
 - Or visit `/api/openapi` in a browser (auto-detects HTML preference)
 
 **Raw OpenAPI spec (JSON):**
