@@ -67,7 +67,7 @@ src/
     auth/                       # better-auth config
     db/                         # Drizzle client + schema
     rpc/                        # oRPC router + procedures
-  stores/                       # Zustand stores
+  store/                       # Zustand stores
 ```
 
 ## Environment Variables
