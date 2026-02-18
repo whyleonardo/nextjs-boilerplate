@@ -1,13 +1,12 @@
 "use client";
 
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signUp } from "@/lib/auth/client";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
@@ -23,7 +22,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import { signUp } from "@/lib/auth/client";
 
 const schema = z.object({
   name: z.string().min(2),
@@ -100,15 +100,15 @@ export function SignUpForm() {
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
             <Button
-              type="submit"
               className="w-full"
               disabled={form.formState.isSubmitting}
+              type="submit"
             >
               {form.formState.isSubmitting ? "Creating account…" : "Sign Up"}
             </Button>
             <p className="text-muted-foreground text-sm">
               Have an account?{" "}
-              <Link href="/sign-in" className="underline">
+              <Link className="underline" href="/sign-in">
                 Sign in
               </Link>
             </p>

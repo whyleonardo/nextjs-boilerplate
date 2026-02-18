@@ -1,16 +1,16 @@
 import { ORPCError, os } from "@orpc/server";
-import { auth } from "@/server/auth";
 import { headers } from "next/headers";
+import { auth } from "@/server/auth";
 
-export type Context = {
+export interface Context {
   userId?: string;
-};
+}
 
 /** Base procedure — available to all (no auth required). */
 export const publicProcedure = os.$context<Context>();
 
 /** Auth middleware — validates session and injects userId into context. */
-const authMiddleware = publicProcedure.use(async ({ context, next }) => {
+const authMiddleware = publicProcedure.use(async ({ next }) => {
   const session = await auth.api.getSession({
     headers: await headers(),
   });

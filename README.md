@@ -7,6 +7,7 @@ A minimal, production-ready Next.js starter with modern tooling and authenticati
 - **Next.js 16** (App Router, React 19, Turbopack)
 - **TypeScript** + **Tailwind CSS v4**
 - **bun** package manager
+- **Biome** + **ultracite** for linting/formatting
 - **shadcn/ui** component library
 - **better-auth** authentication (email/password, extendable)
 - **Drizzle ORM** + **PostgreSQL**
@@ -137,7 +138,8 @@ export function Example() {
 bun run dev           # Start dev server
 bun run build         # Production build
 bun run start         # Start production server
-bun run lint          # ESLint
+bun run lint          # Biome check (via ultracite)
+bun run fix           # Biome fix (via ultracite)
 ```
 
 ## What's Included

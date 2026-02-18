@@ -21,7 +21,9 @@ export async function getSession() {
  */
 export async function requireSession() {
   const session = await getSession();
-  if (!session) redirect("/sign-in");
+  if (!session) {
+    redirect("/sign-in");
+  }
   return session;
 }
 
@@ -32,5 +34,7 @@ export async function requireSession() {
  */
 export async function requireGuest() {
   const session = await getSession();
-  if (session) redirect("/dashboard");
+  if (session) {
+    redirect("/dashboard");
+  }
 }

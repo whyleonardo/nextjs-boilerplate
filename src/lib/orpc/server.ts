@@ -1,7 +1,7 @@
 import "server-only";
 import { createRouterClient } from "@orpc/server";
-import { router } from "@/server/rpc";
 import { headers } from "next/headers";
+import { router } from "@/server/rpc";
 
 /**
  * Server-side oRPC caller — use this in Server Components and Server Actions
