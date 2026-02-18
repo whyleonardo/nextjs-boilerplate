@@ -4,6 +4,6 @@ import { authMiddleware } from "@/server/rpc/middleware";
 
 const os = implement(todoContract);
 
-export const listTodos = os.list.use(authMiddleware).handler(() => {
-    return [{ id: crypto.randomUUID(), title: "Build new app" }];
+export const listTodos = os.use(authMiddleware).list.handler(() => {
+    return [{ id: crypto.randomUUID(), title: "New Todo", completed: false }];
 });

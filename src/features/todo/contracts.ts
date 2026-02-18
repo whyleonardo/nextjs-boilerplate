@@ -1,9 +1,10 @@
 import { oc } from "@orpc/contract";
 import { z } from "zod";
 
-export const TodoSchema = z.object({
+const TodoSchema = z.object({
     id: z.string(),
-    title: z.string(),
+    title: z.string().min(1).max(100),
+    completed: z.boolean(),
 });
 
 export const todoContract = {
