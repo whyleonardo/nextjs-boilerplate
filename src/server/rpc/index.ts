@@ -1,10 +1,7 @@
-import { createTodo, listTodos } from "./procedures/todo";
+import { todo } from "@/features/todo/procedures";
 
 export const router = {
-  todo: {
-    list: listTodos,
-    create: createTodo,
-  },
+    todo,
 };
 
 export type AppRouter = typeof router;
